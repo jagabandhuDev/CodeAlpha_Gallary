@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gallery — Field Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall: #1B1B1D;
+    --wall-deep: #101011;
+    --paper: #F2EEE7;
+    --paper-dim: #C9C4B8;
+    --gold: #C9A227;
+    --taupe: #8B8378;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background: var(--wall);
+    color: var(--paper);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  header{
+    padding: 56px 8vw 28px;
+    border-bottom: 1px solid rgba(242,238,231,0.12);
+  }
+
+  .eyebrow{
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 10px;
+  }
+
+  h1{
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: clamp(32px, 5vw, 54px);
+    margin: 0 0 12px;
+    line-height: 1.05;
+  }
+
+  .sub{
+    color: var(--paper-dim);
+    max-width: 520px;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  nav.filters{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 24px 8vw 0;
+  }
+
+  .filter-btn{
+    background: transparent;
+    border: 1px solid rgba(242,238,231,0.25);
+    color: var(--paper-dim);
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .filter-btn:hover{
+    border-color: var(--gold);
+    color: var(--paper);
+  }
+
+  .filter-btn.active{
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #221a04;
+    font-weight: 600;
+  }
+
+  .gallery{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 4px;
+    padding: 28px 8vw 80px;
+  }
+
+  figure{
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4/5;
+    cursor: pointer;
+    background: var(--wall-deep);
+  }
+
+  figure img{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(35%) contrast(1.02);
+    transform: scale(1.02);
+    transition: transform 0.6s cubic-bezier(.2,.7,.2,1), filter 0.5s ease;
+  }
+
+  figure:hover img{
+    transform: scale(1.1);
+    filter: grayscale(0%) contrast(1.05);
+  }
+
+  figcaption{
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 14px 16px;
+    background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  figure:hover figcaption{
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .cap-title{
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 2px;
+  }
+
+  .cap-tag{
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0;
+  }
+
+  figure.hidden{ display: none; }
+
+  /* Lightbox */
+  .lightbox{
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,11,0.96);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+
+  .lightbox.open{ display: flex; }
+
+  .lb-frame{
+    max-width: 1000px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: rise 0.35s ease;
+  }
+
+  @keyframes rise{
+    from{ opacity: 0; transform: translateY(14px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+
+  .lb-image-wrap{
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .lb-image-wrap img{
+    max-height: 66vh;
+    max-width: 100%;
+    object-fit: contain;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.6);
+  }
+
+  .lb-placard{
+    text-align: center;
+    padding: 18px 10px 8px;
+    max-width: 560px;
+  }
+
+  .lb-placard .cap-title{ font-size: 20px; }
+
+  .lb-placard .cap-index{
+    color: var(--taupe);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+  }
+
+  .lb-nav{
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(242,238,231,0.08);
+    border: 1px solid rgba(242,238,231,0.2);
+    color: var(--paper);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+  }
+
+  .lb-nav:hover{ background: var(--gold); color: #221a04; border-color: var(--gold); }
+  .lb-prev{ left: -8px; }
+  .lb-next{ right: -8px; }
+
+  @media (max-width: 640px){
+    .lb-nav{ position: static; margin-top: 12px; }
+    .lb-nav-row{ display:flex; gap: 16px; justify-content: center; }
+  }
+
+  .lb-close{
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    background: none;
+    border: none;
+    color: var(--paper-dim);
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .lb-close:hover{ color: var(--gold); }
+
+  .filmstrip{
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .filmstrip img{
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 4px;
+    opacity: 0.45;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.2s ease, outline 0.2s ease;
+    outline: 2px solid transparent;
+  }
+
+  .filmstrip img.current{
+    opacity: 1;
+    outline: 2px solid var(--gold);
+  }
+
+  .filmstrip img:hover{ opacity: 0.8; }
+
+  button:focus-visible, .filter-btn:focus-visible{
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Field Notes — Vol. 03</p>
+  <h1>An Image Gallery</h1>
+  <p class="sub">A small walk through light, texture, and place. Filter by category, click any frame to step closer.</p>
+</header>
+
+<nav class="filters" id="filters"></nav>
+
+<div class="gallery" id="gallery"></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" id="lbClose" aria-label="Close">&times;</button>
+  <div class="lb-frame">
+    <div class="lb-image-wrap">
+      <button class="lb-nav lb-prev" id="lbPrev" aria-label="Previous">&#8249;</button>
+      <img id="lbImage" src="" alt="">
+      <button class="lb-nav lb-next" id="lbNext" aria-label="Next">&#8250;</button>
+    </div>
+    <div class="lb-placard">
+      <p class="cap-title" id="lbTitle"></p>
+      <p class="cap-tag" id="lbTag"></p>
+      <p class="cap-index" id="lbIndex"></p>
+    </div>
+    <div class="filmstrip" id="filmstrip"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  const photos = [
+    { id: 1,  seed: "gallery-1",  title: "Low Tide",         tag: "Nature" },
+    { id: 2,  seed: "gallery-2",  title: "Concrete Line",    tag: "Architecture" },
+    { id: 3,  seed: "gallery-3",  title: "Quiet Room",       tag: "Portraits" },
+    { id: 4,  seed: "gallery-4",  title: "Fold & Shadow",    tag: "Abstract" },
+    { id: 5,  seed: "gallery-5",  title: "Pine Corridor",    tag: "Nature" },
+    { id: 6,  seed: "gallery-6",  title: "Glass Stair",      tag: "Architecture" },
+    { id: 7,  seed: "gallery-7",  title: "Held Light",       tag: "Portraits" },
+    { id: 8,  seed: "gallery-8",  title: "Split Field",      tag: "Abstract" },
+    { id: 9,  seed: "gallery-9",  title: "River Bend",       tag: "Nature" },
+    { id: 10, seed: "gallery-10", title: "Facade Study",     tag: "Architecture" },
+    { id: 11, seed: "gallery-11", title: "Passing Glance",   tag: "Portraits" },
+    { id: 12, seed: "gallery-12", title: "Grain & Grid",     tag: "Abstract" },
+  ];
+
+  function imgUrl(seed, w, h){
+    return generatePlate(seed, w, h);
+  }
+
+  // Generates a self-contained abstract "photographic plate" as an SVG data URI.
+  // No network request required — every image renders instantly, everywhere.
+  const palettes = {
+    "Nature":       ["#3B5D45", "#1E2E22", "#8FA97B"],
+    "Architecture": ["#3E4650", "#20242B", "#A9B4BF"],
+    "Portraits":    ["#5A4433", "#2B2016", "#C9A876"],
+    "Abstract":     ["#5A3457", "#241726", "#C97AA8"]
+  };
+
+  function hashSeed(str){
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+
+  function generatePlate(seed, w, h){
+    const photo = photos.find(p => p.seed === seed);
+    const tag = photo ? photo.tag : "Abstract";
+    const [c1, c2, c3] = palettes[tag] || palettes.Abstract;
+    const n = hashSeed(seed);
+
+    const cx1 = (n % 100);
+    const cy1 = ((n >> 3) % 100);
+    const cx2 = ((n >> 6) % 100);
+    const cy2 = ((n >> 9) % 100);
+    const r1 = 30 + (n % 40);
+    const r2 = 20 + ((n >> 4) % 30);
+    const rot = n % 360;
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${c2}"/>
+            <stop offset="100%" stop-color="${c1}"/>
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#g)"/>
+        <g opacity="0.5" transform="rotate(${rot} 50 50)">
+          <circle cx="${cx1}" cy="${cy1}" r="${r1}" fill="${c3}" opacity="0.18"/>
+          <circle cx="${cx2}" cy="${cy2}" r="${r2}" fill="${c3}" opacity="0.14"/>
+        </g>
+        <rect width="100" height="100" fill="none" stroke="${c3}" stroke-opacity="0.15" stroke-width="0.6"/>
+      </svg>
+    `.trim();
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
+  const categories = ["All", ...Array.from(new Set(photos.map(p => p.tag)))];
+  let activeCategory = "All";
+  let currentIndex = 0;
+
+  const filtersEl = document.getElementById('filters');
+  const galleryEl = document.getElementById('gallery');
+
+  function visiblePhotos(){
+    return activeCategory === "All" ? photos : photos.filter(p => p.tag === activeCategory);
+  }
+
+  function renderFilters(){
+    filtersEl.innerHTML = '';
+    categories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn' + (cat === activeCategory ? ' active' : '');
+      btn.textContent = cat;
+      btn.addEventListener('click', () => {
+        activeCategory = cat;
+        renderFilters();
+        renderGallery();
+      });
+      filtersEl.appendChild(btn);
+    });
+  }
+
+  function renderGallery(){
+    galleryEl.innerHTML = '';
+    const list = visiblePhotos();
+    list.forEach((photo, idx) => {
+      const fig = document.createElement('figure');
+      const img = document.createElement('img');
+      img.src = imgUrl(photo.seed, 480, 600);
+      img.alt = photo.title;
+      img.loading = 'lazy';
+
+      const caption = document.createElement('figcaption');
+      caption.innerHTML = `<p class="cap-title">${photo.title}</p><p class="cap-tag">${photo.tag}</p>`;
+
+      fig.appendChild(img);
+      fig.appendChild(caption);
+      fig.addEventListener('click', () => openLightbox(idx));
+      galleryEl.appendChild(fig);
+    });
+  }
+
+  // Lightbox
+  const lightbox = document.getElementById('lightbox');
+  const lbImage = document.getElementById('lbImage');
+  const lbTitle = document.getElementById('lbTitle');
+  const lbTag = document.getElementById('lbTag');
+  const lbIndex = document.getElementById('lbIndex');
+  const filmstripEl = document.getElementById('filmstrip');
+
+  function openLightbox(idx){
+    currentIndex = idx;
+    renderLightbox();
+    lightbox.classList.add('open');
+  }
+
+  function closeLightbox(){
+    lightbox.classList.remove('open');
+  }
+
+  function renderLightbox(){
+    const list = visiblePhotos();
+    const photo = list[currentIndex];
+    lbImage.src = imgUrl(photo.seed, 1000, 750);
+    lbImage.alt = photo.title;
+    lbTitle.textContent = photo.title;
+    lbTag.textContent = photo.tag;
+    lbIndex.textContent = `${currentIndex + 1} / ${list.length}`;
+
+    filmstripEl.innerHTML = '';
+    list.forEach((p, i) => {
+      const thumb = document.createElement('img');
+      thumb.src = imgUrl(p.seed, 80, 80);
+      thumb.alt = p.title;
+      if (i === currentIndex) thumb.classList.add('current');
+      thumb.addEventListener('click', () => { currentIndex = i; renderLightbox(); });
+      filmstripEl.appendChild(thumb);
+    });
+  }
+
+  function step(delta){
+    const list = visiblePhotos();
+    currentIndex = (currentIndex + delta + list.length) % list.length;
+    renderLightbox();
+  }
+
+  document.getElementById('lbClose').addEventListener('click', closeLightbox);
+  document.getElementById('lbPrev').addEventListener('click', () => step(-1));
+  document.getElementById('lbNext').addEventListener('click', () => step(1));
+
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (!lightbox.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft') step(-1);
+    else if (e.key === 'ArrowRight') step(1);
+  });
+
+  renderFilters();
+  renderGallery();
+})();
+</script>
+
+</body>
+</html>
